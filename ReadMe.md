@@ -1,6 +1,7 @@
 # Mask2Former with TensorFlow
 
 This project is an implementation of **Mask2Former** using the TensorFlow framework. The goal is to provide a clear explanation of how Mask2Former works and demonstrate how the model can be implemented with TensorFlow.
+[Mask2Former TensorFlow](https://github.com/syrax90/mask2former_tensorflow2)
 
 ## About Mask2Former
 
