@@ -259,7 +259,6 @@ def _parse_example_base(
         serialized,
         target_height,
         target_width,
-        scale,
         augment):
     """
     Parse one TFRecord example and build multi-scale Mask2Former training targets.
@@ -274,7 +273,6 @@ def _parse_example_base(
         serialized (tf.Tensor): Scalar string Tensor. A single serialized `tf.train.Example`.
         target_height (int): Output image height.
         target_width (int): Output image width.
-        scale (float): Feature-map downscale factor (e.g., 0.25 -> 1/4) for sqrt(area) gating.
         augment (bool): If True, apply data augmentations.
 
     Returns:
@@ -382,8 +380,8 @@ def _parse_example_base(
     image_resized = tf.keras.applications.resnet50.preprocess_input(image_resized)
 
     # Resize masks to (target_height, target_width) using nearest neighbor
-    target_mask_height = tf.cast(tf.round(target_height * scale), tf.int32)
-    target_mask_width = tf.cast(tf.round(target_width * scale), tf.int32)
+    target_mask_height = tf.cast(target_height, tf.int32)
+    target_mask_width = tf.cast(target_width, tf.int32)
 
     masks_expanded = tf.expand_dims(masks, axis=-1)
 
@@ -412,7 +410,6 @@ def parse_example(
         serialized,
         target_height,
         target_width,
-        scale,
         augment):
     """
     Parse one TFRecord example and build multi-scale Mask2Former training targets.
@@ -427,7 +424,6 @@ def parse_example(
         serialized (tf.Tensor): Scalar string Tensor. A single serialized `tf.train.Example`.
         target_height (int): Output image height.
         target_width (int): Output image width.
-        scale (float): Feature-map downscale factor (e.g., 0.25 -> 1/4) for sqrt(area) gating.
         augment (bool): If True, apply data augmentations.
 
     Returns:
@@ -436,7 +432,7 @@ def parse_example(
             - cate_targets (tf.Tensor): Concatenated category targets from all scales [sum(S_i^2)] (int32).
             - mask_targets (tf.Tensor): Concatenated per-cell masks across all scales [Hf, Wf, sum(S_i^2)] (uint8).
     """
-    r = _parse_example_base(serialized, target_height, target_width, scale, augment)
+    r = _parse_example_base(serialized, target_height, target_width, augment)
     # Return first 3 elements: image_resized, cat_ids, masks_resized
     return r[0], r[1], r[2]
 
@@ -446,7 +442,6 @@ def parse_eval_example(
         serialized,
         target_height,
         target_width,
-        scale,
         augment):
     """
     Parse one TFRecord example for evaluation, including metadata.
@@ -455,7 +450,6 @@ def parse_eval_example(
         serialized (tf.Tensor): Scalar string Tensor. A single serialized `tf.train.Example`.
         target_height (int): Output image height.
         target_width (int): Output image width.
-        scale (float): Feature-map downscale factor.
         augment (bool): If True, apply data augmentations.
 
     Returns:
@@ -468,7 +462,7 @@ def parse_eval_example(
             - original_width (tf.Tensor): Original image width.
     """
     # Return all 6 elements
-    return _parse_example_base(serialized, target_height, target_width, scale, augment)
+    return _parse_example_base(serialized, target_height, target_width, augment)
 
 
 
@@ -476,7 +470,6 @@ def create_coco_tfrecord_dataset(
     train_tfrecord_directory: str,
     target_size: Tuple[int, int],
     batch_size: int,
-    scale: float = 2.5,
     deterministic: bool = False,
     augment: bool = True,
     shuffle_buffer_size: Optional[int] = None,
@@ -493,8 +486,6 @@ def create_coco_tfrecord_dataset(
         train_tfrecord_directory (str): Path to directory containing TFRecord shards.
         target_size (tuple): Target (height, width) for image & mask resizing.
         batch_size (int): Batch size for the resulting dataset.
-        scale (float, optional): Feature-map scale factor used in target generation (e.g., 2.5).
-            Defaults to 2.5.
         deterministic (bool, optional): If False, allow non-deterministic map parallelism.
             Defaults to False.
         augment (bool, optional): If True, apply data augmentations in `parse_example`.
@@ -531,7 +522,7 @@ def create_coco_tfrecord_dataset(
     # Parse
     ds = ds.map(
         lambda x: parse_example(
-            x, target_height=target_height, target_width=target_width, scale=scale, augment=augment_tf
+            x, target_height=target_height, target_width=target_width, augment=augment_tf
         ),
         num_parallel_calls=tf.data.AUTOTUNE, deterministic=deterministic
     )
@@ -541,7 +532,7 @@ def create_coco_tfrecord_dataset(
         padded_shapes=(
             [target_size[0], target_size[1], 3],  # image shape
             [None, ],  # cate_target shape (num_instances,)
-            [int(round(target_size[0] * scale)), int(round(target_size[1] * scale)), None]
+            [target_size[0], target_size[1], None]
             # mask_target shape (feat_h, feat_w, num_instances)
         ),
         padding_values=(
@@ -559,7 +550,6 @@ def create_coco_eval_dataset(
     train_tfrecord_directory: str,
     target_size: Tuple[int, int],
     batch_size: int,
-    scale: float = 2.5,
     deterministic: bool = False,
     augment: bool = False,
     shuffle_buffer_size: Optional[int] = None,
@@ -576,8 +566,6 @@ def create_coco_eval_dataset(
         train_tfrecord_directory (str): Path to directory containing TFRecord shards.
         target_size (tuple): Target (height, width) for image & mask resizing.
         batch_size (int): Batch size for the resulting dataset.
-        scale (float, optional): Feature-map scale factor used in target generation (e.g., 2.5).
-            Defaults to 2.5.
         deterministic (bool, optional): If False, allow non-deterministic map parallelism.
             Defaults to False.
         augment (bool, optional): If True, apply data augmentations in `parse_example`.
@@ -617,7 +605,7 @@ def create_coco_eval_dataset(
     # Parse
     ds = ds.map(
         lambda x: parse_eval_example(
-            x, target_height=target_height, target_width=target_width, scale=scale, augment=augment_tf
+            x, target_height=target_height, target_width=target_width, augment=augment_tf
         ),
         num_parallel_calls=tf.data.AUTOTUNE, deterministic=deterministic
     )
@@ -625,7 +613,7 @@ def create_coco_eval_dataset(
     padded_shapes = (
         [target_size[0], target_size[1], 3],  # image shape
         [None, ],  # cate_target shape (num_instances,)
-        [int(round(target_size[0] * scale)), int(round(target_size[1] * scale)), None],
+        [target_size[0], target_size[1], None],
         [], # image_id (scalar)
         [], # original_height (scalar)
         []  # original_width (scalar)

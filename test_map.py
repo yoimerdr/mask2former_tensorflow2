@@ -34,7 +34,6 @@ def main():
         tfrecord_test_path,
         target_size=(cfg.img_height, cfg.img_width),
         batch_size=1,  # Process one by one to handle resizing back to original dims easily
-        scale=cfg.image_scales[0],
         deterministic=True,
         augment=False,
         shuffle_buffer_size=None,

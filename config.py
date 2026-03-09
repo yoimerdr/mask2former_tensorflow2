@@ -53,7 +53,6 @@ class Mask2FormerConfig(object):
 
         # Dataset options
         self.tfrecord_test_path = 'path/to/tfrecords/test/directory'  # Path to TFRecord test dataset directory. Used for mAP calculation.
-        self.image_scales = [0.25]
         self.augment = True
         self.shuffle_buffer_size = 4096  # TFRecord dataset shuffle buffer size. Set to None to disable shuffling
         self.warmup_steps = 10000

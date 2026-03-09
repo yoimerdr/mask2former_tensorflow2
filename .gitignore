@@ -28,3 +28,4 @@ data/coco_classes.txt
 !images/readme
 !images/test
 /predictions.json
+/configs/

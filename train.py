@@ -353,7 +353,6 @@ if __name__ == '__main__':
         train_tfrecord_directory=train_tfrecord_directory,
         target_size=(img_height, img_width),
         batch_size=cfg.batch_size,
-        scale=cfg.image_scales[0],
         augment=cfg.augment,
         shuffle_buffer_size=cfg.shuffle_buffer_size,
         number_images=cfg.number_images)

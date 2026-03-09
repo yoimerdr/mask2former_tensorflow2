@@ -141,7 +141,6 @@ self.accumulation_steps = 8
 
 # Dataset options
 self.tfrecord_test_path = f'{self.coco_root_path}/tfrecords/test'  # Path to TFRecord test dataset directory. Used for mAP calculation.
-self.image_scales = [0.25]
 self.augment = True
 self.shuffle_buffer_size = 4096  # TFRecord dataset shuffle buffer size. Set to None to disable shuffling
 self.warmup_steps = 10000
@@ -241,8 +240,7 @@ python test_map.py
 
 ## Tasks for nearest future
 
-1. Implement PointRend (Point Sampling) for high-resolution images processing.
-2. Add support for multi GPU training.
+- Add support for multi GPU training.
 
 ## Thank you
 
