@@ -29,3 +29,4 @@ data/coco_classes.txt
 !images/test
 /predictions.json
 /configs/
+/mask2former.tflite
