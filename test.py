@@ -270,12 +270,12 @@ if __name__ == '__main__':
     img_height, img_width = cfg.img_height, cfg.img_width
     model = Mask2FormerModel(
         input_shape=(img_height, img_width, 3),
-        transformer_input_channels=256,
+        transformer_input_channels=cfg.transformer_input_channels,
         num_classes=num_classes,
         num_queries=100,
-        num_decoder_layers=6,
-        num_heads=8,
-        dim_feedforward=1024
+        num_decoder_layers=cfg.num_decoder_layers,
+        num_heads=cfg.num_heads,
+        dim_feedforward=cfg.dim_feedforward
     )
     model.build((None, img_height, img_width, 3))
 

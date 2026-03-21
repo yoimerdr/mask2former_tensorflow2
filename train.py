@@ -247,19 +247,21 @@ if __name__ == '__main__':
         coco_info = COCOAnalysis(cfg.panoptic_train_annotation_path)
     else:
         coco_info = COCOAnalysis(cfg.train_annotation_path)
+    
     num_classes = coco_info.get_num_classes()
+    print(f"Number of classes: {num_classes}")
     batch_size = cfg.batch_size
     img_height, img_width = cfg.img_height, cfg.img_width
 
     # Create a model instance
     model = Mask2FormerModel(
         input_shape=(img_height, img_width, 3),
-        transformer_input_channels=256,
+        transformer_input_channels=cfg.transformer_input_channels,
         num_classes=num_classes,
         num_queries=100,
-        num_decoder_layers=6,
-        num_heads=8,
-        dim_feedforward=1024
+        num_decoder_layers=cfg.num_decoder_layers,
+        num_heads=cfg.num_heads,
+        dim_feedforward=cfg.dim_feedforward
     )
     model.build((None, img_height, img_width, 3))
 
