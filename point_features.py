@@ -1,3 +1,9 @@
+"""
+Author: Pavel Timonin
+Created: 2025-03-08
+Description: PointRend for Mask2Former model.
+"""
+
 import tensorflow as tf
 
 """

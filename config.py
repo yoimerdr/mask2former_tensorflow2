@@ -20,6 +20,12 @@ class Mask2FormerConfig(object):
         self.tfrecord_dataset_directory_path = 'path/to/tfrecords/train/directory'  # Path to TFRecord dataset directory
         self.number_images=None  # Restriction for dataset. Set None to get rid of the restriction
 
+        # Transformer architectural parameters
+        self.transformer_input_channels = 256
+        self.num_decoder_layers = 6
+        self.num_heads = 8
+        self.dim_feedforward = 1024
+
         # Panoptic parameters
         self.use_panoptic_dataset = False
         self.panoptic_train_annotation_path = f'{self.coco_root_path}/annotations/panoptic_train2017.json'

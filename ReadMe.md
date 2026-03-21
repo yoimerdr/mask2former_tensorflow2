@@ -118,6 +118,12 @@ And you can find other intuitive parameters:
 self.img_height = 480
 self.img_width = 480
 
+# Transformer architecture parameters
+self.transformer_input_channels = 256 # Channel dimension for transformer inputs
+self.num_decoder_layers = 6           # Number of transformer decoder layers
+self.num_heads = 8                    # Number of attention heads
+self.dim_feedforward = 1024           # Feed-forward network dimension
+
 # If load_previous_model = True: load the previous model weights.
 self.load_previous_model = False
 self.lr = 0.0001
