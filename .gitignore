@@ -30,3 +30,4 @@ data/coco_classes.txt
 /predictions.json
 /configs/
 /mask2former.tflite
+/tflite/

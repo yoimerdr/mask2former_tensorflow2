@@ -2,3 +2,4 @@ tensorflow
 opencv-python
 pycocotools
 pillow
+tf-models-official

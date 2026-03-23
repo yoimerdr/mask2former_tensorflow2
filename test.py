@@ -15,6 +15,7 @@ import tensorflow as tf
 from config import Mask2FormerConfig
 from coco_dataset_optimized import COCOAnalysis
 from model_functions import Mask2FormerModel
+from backbone import get_preprocess_fn
 import logging
 
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
@@ -22,9 +23,13 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
 
-def preprocess_image(image_path, input_size=(320, 320)):
+def preprocess_image(
+    image_path,
+    input_size=(320, 320),
+    backbone_type="resnet50",
+):
     """
-    Load an image, resize to a fixed size, and normalize pixel values to [0, 1].
+    Load an image, resize to a fixed size, and apply backbone-specific preprocessing.
 
     Also returns the original image shape and the unnormalized RGB image.
 
@@ -32,11 +37,13 @@ def preprocess_image(image_path, input_size=(320, 320)):
         image_path (str): Path to the input image file.
         input_size (tuple, optional): Target size `(width, height)` to resize the image to.
             Defaults to `(320, 320)`.
+        backbone_type (str): Backbone type for preprocessing selection.
+            Defaults to ``"resnet50"``.
 
     Returns:
         tuple: A 3-tuple `(img_resized, original_shape, img)` where:
-            - `img_resized` (np.ndarray): Resized and normalized RGB image of shape `(H, W, 3)`,
-              dtype `float32`, values in `[0, 1]`.
+            - `img_resized` (np.ndarray): Resized and preprocessed RGB image of shape `(H, W, 3)`,
+              dtype `float32`.
             - `original_shape` (tuple): Original image height and width as `(H_orig, W_orig)`.
             - `img` (np.ndarray): Original RGB image **before** resizing and normalization,
               dtype `uint8`, values in `[0, 255]`.
@@ -52,8 +59,8 @@ def preprocess_image(image_path, input_size=(320, 320)):
 
     img_resized = cv2.resize(img, input_size)
     img_resized = img_resized.astype(np.float32)
-    # Note: preprocess_input assumes RGB and might zero-center the data (not necessarily [0,1]).
-    img_resized = tf.keras.applications.resnet50.preprocess_input(img_resized)
+    preprocess_fn = get_preprocess_fn(backbone_type)
+    img_resized = preprocess_fn(img_resized)
 
     return img_resized, original_shape, img
 
@@ -275,7 +282,8 @@ if __name__ == '__main__':
         num_queries=100,
         num_decoder_layers=cfg.num_decoder_layers,
         num_heads=cfg.num_heads,
-        dim_feedforward=cfg.dim_feedforward
+        dim_feedforward=cfg.dim_feedforward,
+        backbone_type=cfg.backbone_type,
     )
     model.build((None, img_height, img_width, 3))
 
@@ -295,7 +303,10 @@ if __name__ == '__main__':
 
     for k, filename in enumerate(path_dir):
         image_path = f'images/test/{filename}'
-        img_resized, (orig_h, orig_w), img_rgb = preprocess_image(image_path, input_size=input_shape[:2])
+        img_resized, (orig_h, orig_w), img_rgb = preprocess_image(
+            image_path, input_size=input_shape[:2],
+            backbone_type=cfg.backbone_type,
+        )
 
         img_batch = np.expand_dims(img_resized, axis=0)
         img_batch = tf.convert_to_tensor(img_batch)

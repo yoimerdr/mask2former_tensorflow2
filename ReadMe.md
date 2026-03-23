@@ -14,7 +14,9 @@ To understand instance or panoptic segmentation better, consider the example bel
 
 ![Instance segmentation picture](images/readme/my_photo_with_masks.jpg)
 
-Current implementation of Mask2Former applies ResNet-50 as a backbone.
+Current implementation of Mask2Former supports two backbones:
+- **ResNet-50** (default) — ImageNet pre-trained, "caffe"-style BGR preprocessing.
+- **MobileNetV4ConvMedium** — lightweight pure-convolution backbone from `tf-models-official`, suitable for mobile/edge deployment. Trained from scratch with [0, 1] RGB preprocessing.
 
 ## Installation, Dependencies, and Requirements
 
@@ -124,6 +126,9 @@ self.num_decoder_layers = 6           # Number of transformer decoder layers
 self.num_heads = 8                    # Number of attention heads
 self.dim_feedforward = 1024           # Feed-forward network dimension
 
+# Backbone selection: "resnet50" (default) or "mobilenetv4"
+self.backbone_type = "resnet50"
+
 # If load_previous_model = True: load the previous model weights.
 self.load_previous_model = False
 self.lr = 0.0001
@@ -150,11 +155,17 @@ self.tfrecord_test_path = f'{self.coco_root_path}/tfrecords/test'  # Path to TFR
 self.augment = True
 self.shuffle_buffer_size = 4096  # TFRecord dataset shuffle buffer size. Set to None to disable shuffling
 self.warmup_steps = 10000
+
+# Whether to print the model summary at the beginning of training
+self.show_model_summary = False
 ```
 
 ## Docker file
 
-The docker file is available in the `docker` directory. nvcr.io/nvidia/tensorflow:25.02-tf2-py3 doesn't contain all the required dependencies, so we use the container from the `docker` directory.
+The docker files are available in the `docker` directory. `nvcr.io/nvidia/tensorflow:25.02-tf2-py3` doesn't contain all the required dependencies, so we provide custom containers depending on the chosen backbone:
+
+- **`docker/my-tf`**: Use this container for the default **ResNet50** backbone.
+- **`docker/my-tf-mobile`**: Use this container when using the **MobileNetV4** backbone. It installs additional dependencies (like `tf-models-official`) and applies specific patches needed for the lightweight mobile setup.
 
 ## Training
 

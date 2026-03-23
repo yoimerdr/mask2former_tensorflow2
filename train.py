@@ -261,9 +261,20 @@ if __name__ == '__main__':
         num_queries=100,
         num_decoder_layers=cfg.num_decoder_layers,
         num_heads=cfg.num_heads,
-        dim_feedforward=cfg.dim_feedforward
+        dim_feedforward=cfg.dim_feedforward,
+        backbone_type=cfg.backbone_type,
     )
     model.build((None, img_height, img_width, 3))
+
+    if cfg.show_model_summary:
+        model.summary()
+        try:
+            input("Press Enter to continue...")
+        except EOFError:
+            import time
+
+            print("Non-interactive environment detected. Pausing for 10 seconds to let you read the summary...")
+            time.sleep(10)
 
     # Learning Rate Schedule
     # Estimate total steps for CosineDecay
@@ -357,7 +368,9 @@ if __name__ == '__main__':
         batch_size=cfg.batch_size,
         augment=cfg.augment,
         shuffle_buffer_size=cfg.shuffle_buffer_size,
-        number_images=cfg.number_images)
+        number_images=cfg.number_images,
+        backbone_type=cfg.backbone_type,
+    )
 
     # Training loop
     print("Starting training...")

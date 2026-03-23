@@ -61,7 +61,8 @@ def main():
         num_queries=100,
         num_decoder_layers=cfg.num_decoder_layers,
         num_heads=cfg.num_heads,
-        dim_feedforward=cfg.dim_feedforward
+        dim_feedforward=cfg.dim_feedforward,
+        backbone_type=cfg.backbone_type,
     )
 
     # Build model

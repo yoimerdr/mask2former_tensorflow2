@@ -20,6 +20,12 @@ class Mask2FormerConfig(object):
         self.tfrecord_dataset_directory_path = 'path/to/tfrecords/train/directory'  # Path to TFRecord dataset directory
         self.number_images=None  # Restriction for dataset. Set None to get rid of the restriction
 
+        # Backbone configuration: "resnet50" or "mobilenetv4"
+        self.backbone_type = "resnet50"
+
+        # Whether to print the model summary at the beginning of training
+        self.show_model_summary = False
+
         # Transformer architectural parameters
         self.transformer_input_channels = 256
         self.num_decoder_layers = 6

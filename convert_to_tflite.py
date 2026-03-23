@@ -58,6 +58,7 @@ def convert_mask2former_to_tflite(output_path: str = "mask2former.tflite") -> No
         num_decoder_layers=cfg.num_decoder_layers,
         num_heads=cfg.num_heads,
         dim_feedforward=cfg.dim_feedforward,
+        backbone_type=cfg.backbone_type,
     )
     model.build((1, img_height, img_width, 3))
 
@@ -72,6 +73,9 @@ def convert_mask2former_to_tflite(output_path: str = "mask2former.tflite") -> No
     else:
         logger.error(f"No checkpoint found in {cfg.test_model_path}")
         raise FileNotFoundError(f"No checkpoint found in {cfg.test_model_path}")
+
+    # Set model to inference mode to freeze batch normalization and other trainable variables
+    model.trainable = False
 
     logger.info("Tracing the forward pass for TFLite conversion...")
 
