@@ -1,18 +1,12 @@
 #
-# This example Dockerfile illustrates a method to install
-# additional packages on top of NVIDIA's TensorFlow container image.
+# This Dockerfile is configured for the default ResNet50 backbone.
+# It installs essential dependencies needed for standard Mask2Former training.
 #
 # To use this Dockerfile, use the `docker build` command.
 # See https://docs.docker.com/engine/reference/builder/
 # for more information.
 #
 FROM nvcr.io/nvidia/tensorflow:25.02-tf2-py3
-
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#        my-package1 \
-#        my-package2 \
-#      && \
-#    rm -rf /var/lib/apt/lists/
 
 # Python packages from PyPI
 RUN python3 -m pip install --no-cache-dir \

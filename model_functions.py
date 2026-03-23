@@ -5,39 +5,14 @@ Description: This script contains classes and functions for Mask2Former model bu
 """
 
 import tensorflow as tf
-from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.layers import (
     Dense,
     Layer,
 )
-from tensorflow.keras.models import Model
+from backbone import get_backbone, BACKBONE_RESNET50
 from pixel_decoder import MSDeformablePixelDecoder
 from transformer_decoder import TransformerDecoder
 
-
-# FPN-ResNet50 backbone
-
-def get_resnet50_backbone(input_shape=(480, 480, 3)):
-    """
-    Builds a ResNet50 backbone and returns feature maps C2, C3, C4, C5.
-
-    Args:
-        input_shape (tuple): Input image shape as (height, width, channels). Defaults to (480, 480, 3).
-
-    Returns:
-        tf.keras.Model: Model with inputs=image tensor and outputs=[c2, c3, c4, c5] feature maps.
-    """
-    backbone = ResNet50(
-        weights="imagenet", include_top=False, input_shape=input_shape
-    )
-    backbone.trainable = True
-
-    c2_output = backbone.get_layer("conv2_block3_out").output  # stride 4
-    c3_output = backbone.get_layer("conv3_block4_out").output  # stride 8
-    c4_output = backbone.get_layer("conv4_block6_out").output  # stride 16
-    c5_output = backbone.get_layer("conv5_block3_out").output  # stride 32
-
-    return Model(inputs=backbone.input, outputs=[c2_output, c3_output, c4_output, c5_output], name="resnet50_backbone")
 
 
 # Mask2Former Head
@@ -179,11 +154,12 @@ class Mask2FormerModel(tf.keras.Model):
     TensorFlow implementation of a Mask2Former-style model.
 
     Architecture:
-        image -> ResNet50 (C2, C3, C4, C5)
+        image -> Backbone (C2, C3, C4, C5)
               -> PixelDecoder (MSDeformablePixelDecoder)
               -> TransformerDecoder (Mask2FormerHead)
               -> class logits + mask logits
 
+    Supported backbones: ResNet50 (default), MobileNetV4ConvMedium.
     This is a *model-only* implementation: no loss functions or matching.
 
     Args:
@@ -195,6 +171,7 @@ class Mask2FormerModel(tf.keras.Model):
         num_heads (int): Number of attention heads. Defaults to 8.
         dim_feedforward (int): Feed-forward dimension. Defaults to 1024.
         dropout (float): Dropout rate. Defaults to 0.1.
+        backbone_type (str): Backbone to use. One of ``"resnet50"`` or ``"mobilenetv4"``. Defaults to ``"resnet50"``.
         name (str): Model name. Defaults to "mask2former_tf".
         **kwargs: Additional keyword arguments for the base Model class.
     """
@@ -209,6 +186,7 @@ class Mask2FormerModel(tf.keras.Model):
         num_heads=8,
         dim_feedforward=1024,
         dropout=0.1,
+        backbone_type=BACKBONE_RESNET50,
         name="mask2former_tf",
         **kwargs,
     ):
@@ -218,9 +196,10 @@ class Mask2FormerModel(tf.keras.Model):
         self.num_queries = num_queries
         self.transformer_input_channels = transformer_input_channels
 
-        # ResNet backbone
-        self.backbone = get_resnet50_backbone(
-            input_shape=input_shape
+        # Backbone (ResNet50 or MobileNetV4)
+        self.backbone = get_backbone(
+            backbone_type=backbone_type,
+            input_shape=input_shape,
         )
 
         # Pixel decoder

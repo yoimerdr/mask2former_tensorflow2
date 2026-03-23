@@ -62,17 +62,16 @@ def draw_instance_predictions(
 
     img = image.copy()
 
-    # Check for ResNet preprocessing (zero-centered, BGR, often negative values)
+    # Handle denormalization based on preprocessing type
     if np.min(img) < 0:
-        # Restore BGR image from zero-centered
-        # Mean values for ResNet: [103.939, 116.779, 123.68]
+        # ResNet50 preprocessing: zero-centered BGR with ImageNet means
         img[..., 0] += 103.939
         img[..., 1] += 116.779
         img[..., 2] += 123.68
         img = np.clip(img, 0, 255).astype(np.uint8)
         # It is already BGR, so we use it directly
         vis = img
-    else:
+    elif np.max(img) <= 1.5:
         # Standard RGB image handling
         if img.dtype != np.uint8:
             # Assume [0, 1] float if max <= 1.5 (safety margin)
@@ -201,7 +200,9 @@ if __name__ == '__main__':
         batch_size=cfg.batch_size,
         augment=cfg.augment,
         shuffle_buffer_size=cfg.shuffle_buffer_size,
-        number_images=cfg.number_images)
+        number_images=cfg.number_images,
+        backbone_type=cfg.backbone_type,
+    )
 
     out_dir = 'images/dataset_test'
     shutil.rmtree(out_dir, ignore_errors=True)

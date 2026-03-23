@@ -9,6 +9,7 @@ import os
 from typing import Optional, Tuple
 from pycocotools.coco import COCO
 from reassign_categories import reassign_category_ids
+from backbone import get_preprocess_fn, BACKBONE_RESNET50
 import tensorflow as tf
 
 # Feature spec that matches the COCO TFRecord format
@@ -259,7 +260,8 @@ def _parse_example_base(
         serialized,
         target_height,
         target_width,
-        augment):
+        augment,
+        backbone_type):
     """
     Parse one TFRecord example and build multi-scale Mask2Former training targets.
 
@@ -374,10 +376,10 @@ def _parse_example_base(
     # Resize (bilinear by default; set method if you need a match)
     image_resized = tf.image.resize(img, size=(target_height, target_width), method="bilinear", antialias=True)
 
-    # Preprocess for ResNet50 (requires inputs in [0, 255] range but specific distribution)
-    # The original model expects "caffe" mode: BGR, zero-centered
+    # Preprocess image for the selected backbone
     image_resized = tf.cast(image_resized, tf.float32)
-    image_resized = tf.keras.applications.resnet50.preprocess_input(image_resized)
+    preprocess_fn = get_preprocess_fn(backbone_type)
+    image_resized = preprocess_fn(image_resized)
 
     # Resize masks to (target_height, target_width) using nearest neighbor
     target_mask_height = tf.cast(target_height, tf.int32)
@@ -410,7 +412,8 @@ def parse_example(
         serialized,
         target_height,
         target_width,
-        augment):
+        augment,
+        backbone_type):
     """
     Parse one TFRecord example and build multi-scale Mask2Former training targets.
 
@@ -425,14 +428,17 @@ def parse_example(
         target_height (int): Output image height.
         target_width (int): Output image width.
         augment (bool): If True, apply data augmentations.
+        backbone_type (str): Backbone type for preprocessing selection.
 
     Returns:
         tuple: A tuple containing:
-            - image_resized (tf.Tensor): Resized image [target_height, target_width, 3] (float32) in [0, 1].
+            - image_resized (tf.Tensor): Resized image [target_height, target_width, 3] (float32).
             - cate_targets (tf.Tensor): Concatenated category targets from all scales [sum(S_i^2)] (int32).
             - mask_targets (tf.Tensor): Concatenated per-cell masks across all scales [Hf, Wf, sum(S_i^2)] (uint8).
     """
-    r = _parse_example_base(serialized, target_height, target_width, augment)
+    r = _parse_example_base(
+        serialized, target_height, target_width, augment, backbone_type
+    )
     # Return first 3 elements: image_resized, cat_ids, masks_resized
     return r[0], r[1], r[2]
 
@@ -442,7 +448,8 @@ def parse_eval_example(
         serialized,
         target_height,
         target_width,
-        augment):
+        augment,
+        backbone_type):
     """
     Parse one TFRecord example for evaluation, including metadata.
 
@@ -451,10 +458,11 @@ def parse_eval_example(
         target_height (int): Output image height.
         target_width (int): Output image width.
         augment (bool): If True, apply data augmentations.
+        backbone_type (str): Backbone type for preprocessing selection.
 
     Returns:
         tuple: A tuple containing:
-            - image_resized (tf.Tensor): Resized image [target_height, target_width, 3] (float32) in [0, 1].
+            - image_resized (tf.Tensor): Resized image [target_height, target_width, 3] (float32).
             - cate_targets (tf.Tensor): Concatenated category targets from all scales [sum(S_i^2)] (int32).
             - mask_targets (tf.Tensor): Concatenated per-cell masks across all scales [Hf, Wf, sum(S_i^2)] (uint8).
             - image_id (tf.Tensor): Image ID.
@@ -462,7 +470,9 @@ def parse_eval_example(
             - original_width (tf.Tensor): Original image width.
     """
     # Return all 6 elements
-    return _parse_example_base(serialized, target_height, target_width, augment)
+    return _parse_example_base(
+        serialized, target_height, target_width, augment, backbone_type
+    )
 
 
 
@@ -473,7 +483,8 @@ def create_coco_tfrecord_dataset(
     deterministic: bool = False,
     augment: bool = True,
     shuffle_buffer_size: Optional[int] = None,
-    number_images: Optional[int] = None
+    number_images: Optional[int] = None,
+    backbone_type: str = BACKBONE_RESNET50,
 ) -> tf.data.Dataset:
     """
     Create a `tf.data.Dataset` from COCO TFRecord shards and emit Mask2Former targets.
@@ -494,6 +505,8 @@ def create_coco_tfrecord_dataset(
             Defaults to None.
         number_images (int, optional): Optional cap on the number of images to take from the stream.
             Defaults to None.
+        backbone_type (str): Backbone type for preprocessing selection.
+            Defaults to ``"resnet50"``.
 
     Returns:
         tf.data.Dataset: A dataset of batched tuples:
@@ -522,7 +535,8 @@ def create_coco_tfrecord_dataset(
     # Parse
     ds = ds.map(
         lambda x: parse_example(
-            x, target_height=target_height, target_width=target_width, augment=augment_tf
+            x, target_height=target_height, target_width=target_width,
+            augment=augment_tf, backbone_type=backbone_type,
         ),
         num_parallel_calls=tf.data.AUTOTUNE, deterministic=deterministic
     )
@@ -553,7 +567,8 @@ def create_coco_eval_dataset(
     deterministic: bool = False,
     augment: bool = False,
     shuffle_buffer_size: Optional[int] = None,
-    number_images: Optional[int] = None
+    number_images: Optional[int] = None,
+    backbone_type: str = BACKBONE_RESNET50,
 ) -> tf.data.Dataset:
     """
     Create a `tf.data.Dataset` from COCO TFRecord shards and emit Mask2Former targets.
@@ -574,6 +589,8 @@ def create_coco_eval_dataset(
             Defaults to None.
         number_images (int, optional): Optional cap on the number of images to take from the stream.
             Defaults to None.
+        backbone_type (str): Backbone type for preprocessing selection.
+            Defaults to ``"resnet50"``.
 
     Returns:
         tf.data.Dataset: A dataset of batched tuples:
@@ -605,7 +622,8 @@ def create_coco_eval_dataset(
     # Parse
     ds = ds.map(
         lambda x: parse_eval_example(
-            x, target_height=target_height, target_width=target_width, augment=augment_tf
+            x, target_height=target_height, target_width=target_width,
+            augment=augment_tf, backbone_type=backbone_type,
         ),
         num_parallel_calls=tf.data.AUTOTUNE, deterministic=deterministic
     )
