@@ -4,7 +4,6 @@ Created: 2025-09-28
 Description: This script performs the main actions for the training process.
 """
 
-
 import os
 import logging
 import tensorflow as tf
@@ -31,7 +30,6 @@ if gpus:
 os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
 
-
 def train_one_epoch(model, dataset, optimizer, num_classes):
     """
     Run one training epoch without gradient accumulation.
@@ -49,9 +47,12 @@ def train_one_epoch(model, dataset, optimizer, num_classes):
     Returns:
         None
     """
-    for step, (images, cate_target, mask_target)  in enumerate(dataset):
-        total_loss, cate_loss, dice_loss, mask_loss = train_one_step(model, images, cate_target, mask_target, optimizer, num_classes)
-        print("Step ", step, ": ", "total=", total_loss.numpy(), ", cate=", cate_loss.numpy(), ", dice=", dice_loss.numpy(), ", mask=", mask_loss.numpy())
+    for step, (images, cate_target, mask_target) in enumerate(dataset):
+        total_loss, cate_loss, dice_loss, mask_loss = train_one_step(model, images, cate_target, mask_target, optimizer,
+                                                                     num_classes)
+        print("Step ", step, ": ", "total=", total_loss.numpy(), ", cate=", cate_loss.numpy(), ", dice=",
+              dice_loss.numpy(), ", mask=", mask_loss.numpy())
+
 
 @tf.function(experimental_relax_shapes=True)
 def train_one_step(model, images, cate_target, mask_target, optimizer, num_classes):
@@ -86,6 +87,7 @@ def train_one_step(model, images, cate_target, mask_target, optimizer, num_class
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     return total_loss, cate_loss, dice_loss, mask_loss
+
 
 def accumulate_one_step(model,
                         images,
@@ -133,15 +135,16 @@ def accumulate_one_step(model,
 
     return total_l, cate_l, dice_loss, mask_l
 
+
 @tf.function(experimental_relax_shapes=True)
 def train_one_epoch_accumulated_mode(model,
-                    dataset,
-                    optimizer,
-                    num_classes,
-                    accumulation_steps,
-                    accum_grads,
-                    accum_counter,
-                    global_step):
+                                     dataset,
+                                     optimizer,
+                                     num_classes,
+                                     accumulation_steps,
+                                     accum_grads,
+                                     accum_counter,
+                                     global_step):
     """
     Run one epoch with gradient accumulation using preallocated buffers.
 
@@ -198,11 +201,12 @@ def train_one_epoch_accumulated_mode(model,
             lambda: _reset_counter(),
             lambda: None)
 
+
 def run_one_epoch_accumulated_mode(model,
-                  dataset,
-                  optimizer,
-                  num_classes,
-                  accumulation_steps=8):
+                                   dataset,
+                                   optimizer,
+                                   num_classes,
+                                   accumulation_steps=8):
     """
     Convenience wrapper to run one epoch with gradient accumulation.
 
@@ -227,27 +231,31 @@ def run_one_epoch_accumulated_mode(model,
 
     # Counters
     accum_counter = tf.Variable(0, dtype=tf.int32, trainable=False)
-    global_step   = tf.Variable(0, dtype=tf.int32, trainable=False)
+    global_step = tf.Variable(0, dtype=tf.int32, trainable=False)
 
     # Run the compiled graph
     train_one_epoch_accumulated_mode(model,
-                    dataset,
-                    optimizer,
-                    num_classes,
-                    accumulation_steps,
-                    accum_grads,
-                    accum_counter,
-                    global_step)
+                                     dataset,
+                                     optimizer,
+                                     num_classes,
+                                     accumulation_steps,
+                                     accum_grads,
+                                     accum_counter,
+                                     global_step)
 
 
-if __name__ == '__main__':
-    cfg = Mask2FormerConfig()
+def train(cfg):
+    """
+    Main training function.
+    Args:
+        cfg: The configuration object containing all necessary parameters and paths for training.
 
+    """
     if cfg.use_panoptic_dataset:
         coco_info = COCOAnalysis(cfg.panoptic_train_annotation_path)
     else:
         coco_info = COCOAnalysis(cfg.train_annotation_path)
-    
+
     num_classes = coco_info.get_num_classes()
     print(f"Number of classes: {num_classes}")
     batch_size = cfg.batch_size
@@ -296,7 +304,6 @@ if __name__ == '__main__':
         alpha=0.01
     )
 
-
     class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
         """
         Learning rate schedule with a warmup period.
@@ -310,6 +317,7 @@ if __name__ == '__main__':
             decay_schedule (tf.keras.optimizers.schedules.LearningRateSchedule):
                 Schedule to follow after warmup.
         """
+
         def __init__(self, warmup_steps, target_lr, decay_schedule):
             super(WarmUp, self).__init__()
             self.warmup_steps = warmup_steps
@@ -329,7 +337,6 @@ if __name__ == '__main__':
                 "target_lr": self.target_lr,
                 "decay_schedule": self.decay_schedule
             }
-
 
     learning_rate = WarmUp(warmup_steps, initial_learning_rate, lr_schedule)
 
@@ -388,3 +395,8 @@ if __name__ == '__main__':
             save_path = manager.save()
             logger.info('Saved checkpoint for epoch {}: {}'.format(epoch, save_path))
     print("Done!")
+
+
+if __name__ == '__main__':
+    cfg = Mask2FormerConfig()
+    train(cfg)
